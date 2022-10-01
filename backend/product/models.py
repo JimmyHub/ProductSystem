@@ -19,7 +19,7 @@ class ProductManager(models.Model):
     number = models.IntegerField(verbose_name='數量')
     in_time = models.DateField(verbose_name='進貨時間', auto_now_add=True)
     out_time = models.DateField(verbose_name='銷貨時間', auto_now=True)
-    price = models.IntegerField(verbose_name='銷貨金額', default=0)
+    inprice = models.IntegerField(verbose_name='進貨金額', default=0)
 
     class Meta:
         db_table = 'products_inout'
@@ -29,6 +29,20 @@ class ProductReceipt(models.Model):
     mid = models.ForeignKey(ProductManager, on_delete=models.CASCADE, primary_key=True)
     status = models.IntegerField(verbose_name='發票狀態', default=0)
     make_time = models.DateField(verbose_name='開發票時間', auto_now=True)
+    outprice = models.IntegerField(verbose_name='銷貨金額', default=0)
+
 
     class Meta:
         db_table = 'products_receipt'
+
+class ProductUser(models.Model):
+    id = models.AutoField(primary_key=True)
+    rid = models.ForeignKey(ProductReceipt, on_delete=models.CASCADE, primary_key=True)
+    name = models.CharField(verbose_name='名稱',max_length=50, default='待增加')
+    tax_id = models.CharField(verbose_name='統編', max_length=10, default='0')
+    # 0 個人 1公司
+    kind = models.IntegerField(verbose_name='公司/個人', default=0)
+
+
+    class Meta:
+        db_table = 'products_user'
