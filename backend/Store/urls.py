@@ -55,9 +55,11 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('products/', ProductView.as_view()),
-    path('managers/', ProductManagerView.as_view()),
-    path('receipts/', ProductReceiptView.as_view()),
+    path('v1/products/<str:account>', ProductView.as_view()),
+    path('v1/products/<str:pattern>/<str:browser>/<int:page>/<str:mode>/<str:keyword>/<str:account>', ProductView.as_view()),
+    path('v1/managers/<str:account>', ProductManagerView.as_view()),
+    path('v1/managers/<str:mid>/<str:account>', ProductManagerView.as_view()),
+    path('v1/receipts/', ProductReceiptView.as_view()),
     path('swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-json'),
     path('swagger.yaml', schema_view.without_ui(cache_timeout=0), name='schema-json'),
 
@@ -66,7 +68,6 @@ urlpatterns = [
 
 ]
 
-urlpatterns = [path('v1/', include(urlpatterns))]
 
 
 #生成媒體資源路由

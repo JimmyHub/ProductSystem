@@ -3,12 +3,17 @@ import json
 from django.http import JsonResponse
 from rest_framework.generics import GenericAPIView
 from django.db import transaction
+from django.db.models import Sum
 
 from .models import ProductProfile, ProductManager, ProductReceipt
 from .serializers import ProductSerializer, PmanagerSerializer, PreceiptSerializer
 
 key = 'a123456'
 
+DB_DICT={
+    'in_database':'default',
+    'out_database':'out'
+}
 
 def take_data(request):
     json_str = request.body
@@ -17,111 +22,177 @@ def take_data(request):
         return json_obj
 
 
+def check_data(data_dict, json_data):
+    for data in data_dict:
+        item = json_data.get(data, '')
+        if not item:
+            result = {'code': 400, 'data': {'error': f'請給我商品的 {data}資料'}}
+            return False, result
+        data_dict[data] = item
+    return True,data_dict
+
 class ProductView(GenericAPIView):
     # queryset = ProductProfile.objects.all()
     serializer_class = ProductSerializer
-
-    def check_data(self, data_dict, json_data):
-        for data in data_dict:
-            item = json_data.get(data, '')
-            if not item:
-                result = {'code': 400, 'data': {'error': f'請給我商品的 {data}資料'}}
-                return False, result
-            data_dict[data] = item
+    # 獲取 特定page 的資料 
+    def select_page_data(self, page, query_list):
+        p_max = page * 10
+        p_min = (page-1) *10 
+        data_len = len(query_list)
+        if data_len < 10:
+            min_data_num, max_data_num = 0, data_len
+        elif (page+1) * 10 > data_len:
+            if data_len > p_max:
+                min_data_num, max_data_num = p_min, p_max
+            else: 
+                min_data_num, max_data_num = p_min, data_len
+        pcount = data_len//10 +1
+        pcounts = [ i for i in range(1,pcount+1)]
+        query_list = query_list[min_data_num: max_data_num]
+        return pcounts, query_list
 
     # 獲得資料: 獲取全部商品歷史清單 (每一條都要有的那種)
-    def get(self, request, pattern, browser, keyword):
+    def get(self, request, pattern, browser, page=1, mode=None, keyword=None, account=None):
+        database = DB_DICT.get(account,'')
+        if not database:
+            result = {'code': 400, 'data': {'error': '選擇錯誤資料庫'}}
+            return JsonResponse(result)
         if pattern == 'all':
-            product_list = ProductProfile.object.all()
-        elif pattern == 'kind':
-            product_list = ProductProfile.object.filter(kind=keyword)
+            product_list = ProductProfile.objects.using(database).all()
+        elif pattern == 'all_money':
+            in_total = ProductManager.objects.using(database).all().aggregate(Sum('in_price')) 
+            out_total = ProductManager.objects.using(database).all().aggregate(Sum('out_price'))
+            out_total['out_price__sum'] = out_total['out_price__sum'] if out_total['out_price__sum'] else 0
+            result = {'code': 200, 'data': {'in_total':in_total['in_price__sum'], 'out_total':out_total['out_price__sum']}}
+            return JsonResponse(result)
+        elif pattern == 'search':
+            # page 資料數量 要小心出錯
+            if mode =='brand':
+                product_list = ProductProfile.objects.using(database).filter(brand__contains=keyword)
+            # elif mode == 'kind':
+            #     product_list = ProductProfile.objects.filter(kind__contains=keyword)
+            elif mode =='type_no':
+                product_list = ProductProfile.objects.using(database).filter(type_no__contains=keyword)
+            else:
+                product_list = ProductProfile.objects.using(database).filter(kind=keyword)
         else:
             result = {'code': 400, 'data': {'error': '錯誤瀏覽模式'}}
             return JsonResponse(result)
-
         result_list = []
         if browser == 'summary':
-            for product in product_list:
-                p_file = product.pid
+            pcounts, page_p_list= self.select_page_data(page, product_list)
+            for product in page_p_list:
                 product_data = {
-                    'brand': p_file.brand,
-                    'type_no': p_file.type_no,
-                    'kind': p_file.kind,
-                    'total': product.total
+                    'pid': product.id,
+                    'brand': product.brand,
+                    'type_no': product.type_no,
+                    'kind': product.kind,
+                    'total': product.total,
+                    'store': product.store
                 }
                 result_list.append(product_data)
         elif browser == 'history':
-            for product in product_list:
-                manager_list = ProductManager.object.filter(pid=product)
-                manager_tmp_list = []
-                if not manager_list:
-                    result = {'code': 400, 'data': {'error': 'manager 資料庫有誤'}}
-                    return JsonResponse(result)
-                for manager in manager_list:
-                    receipt = ProductReceipt.object.filter(mid=manager)
-                    manager_data = {'number': manager.number, 'in_time': manager.in_time,
-                                    'out_time': manager.out_time, 'price': manager.price,
-                                    'receipt': receipt[0].make_time}
-                    manager_tmp_list.append(manager_data)
-                product_data = {'brand': product.brand, 'type_no': product.type_no,
-                                'kind': product.kind, 'p_list': manager_tmp_list
-                                }
-                result_list.append(product_data)
-        result = {'code': 200, 'data': result_list}
+            manager_list = ProductManager.objects.using(database).all().order_by('-in_time')
+            if not manager_list:
+                result = {'code': 400, 'data': {'error': 'manager 資料庫有誤'}}
+                return JsonResponse(result)
+            pcounts, page_m_list= self.select_page_data(page, manager_list)
+            for manager in page_m_list:
+                out_price = 0 if not manager.out_price else manager.out_price
+                out_time = '' if not manager.out_time else manager.out_time
+                manager_data = {                 
+                    'brand': manager.pid.brand,
+                    'type_no': manager.pid.type_no,
+                    'kind': manager.pid.kind,
+                    'store': manager.pid.store,
+                    'mid':manager.id,
+                    'number': manager.number, 
+                    'in_price': manager.in_price, 
+                    'in_time': manager.in_time,
+                    'out_price': out_price, 
+                    'out_time': out_time}
+                result_list.append(manager_data)
+
+        result = {'code': 200, 'data': {'list':result_list, 'pcounts':pcounts}}
         return JsonResponse(result)
 
     # 新增商品資料: 新增商品紀錄(數量每一個都會寫入一筆資料到表裡面 同時也在總表加上新數量)
-    def post(self, request):
+    def post(self, request,account):
+        database = DB_DICT.get(account,'')
+        if not database:
+            result = {'code': 400, 'data': {'error': '選擇錯誤資料庫'}}
+            return JsonResponse(result)
+
         # 先用初版寫法 其他日後再做修改
         json_obj = take_data(request)
         if not json_obj:
             result = {'code': 400, 'data': {'error': '請傳送資料'}}
             return JsonResponse(result)
-        product_dict = {'brand': '', 'type_no': '', 'kind': '', 'total': 0}
+        product_dict = {'brand': '', 'type_no': '', 'kind': '', 'total': 0,'in_price':0,'in_time':''}
         # 檢查傳入資料是否有問題
-        data_ok = self.check_data(product_dict, json_obj)
+        data_ok = check_data(product_dict, json_obj)
         if not data_ok[0]:
             return JsonResponse(data_ok[1])
+        product_dict = data_ok[1]
         with transaction.atomic():
             try:
                 # 先看有沒有舊資料
-                # product = ProductProfile.object.get_or_create(**product_dict[1])
-                product = ProductProfile.object.filter(type_no=product_dict['type_no'])
+                # product = ProductProfile.objects.get_or_create(**product_dict[1])
+                product = ProductProfile.objects.using(database).filter(type_no=product_dict['type_no'])
+
                 if not product:
                     # 根據傳入資料 先把 機型 寫入資料庫
-                    product = ProductProfile.object.create(**product_dict)
+                    product_dict['store'] = product_dict['total']
+                    product = ProductProfile.objects.using(database).create(brand=product_dict['brand'],
+                                                            type_no=product_dict['type_no'],
+                                                            kind=product_dict['kind'],
+                                                            total=product_dict['total'],
+                                                            store=product_dict['store'],
+                                                            )
                 else:
                     product = product[0]
-                    product.update(total=product.total + product_dict['total'])
-                    product.save()
-                for num in range(product_dict['total']):
-                    manager = ProductManager.object.create(pid=product,
+                    total_num = product.total + int(product_dict['total'])
+                    store_num = product.store + int(product_dict['total'])
+                    # 商品資料輸入正確 但是在建立個別帳單時出錯 就會造成庫存有問題
+                    product.total=total_num
+                    product.store=store_num
+                    product.save(using=database)
+                for num in range(int(product_dict['total'])):
+                    manager = ProductManager.objects.using(database).create(pid=product,
+                                                           in_price=product_dict['in_price'],
+                                                           in_time =product_dict['in_time'],
                                                            number=1)
-                    ProductReceipt.object.create(mid=manager, status=0)
-                result = {'code': 200, 'data': f'{product_dict["type_no"]}新增完成'}
+                result = {'code': 200, 'data': {'message':f'{product_dict["type_no"]}新增完成'}}
             except Exception as e:
                 result = {'code': 500, 'data': {'error': '新增資料出現異常'}}
         return JsonResponse(result)
 
-    # 修改商品資料: 只能修改 品牌/類型/類別
+    # 修改商品資料: 修改 品牌/類型/類別/庫存/總數
     def put(self, request):
+
         json_obj = take_data(request)
         if not json_obj:
             result = {'code': 400, 'data': {'error': '請傳送資料'}}
             return JsonResponse(result)
-        product_dict = {'id': 0, 'brand': '', 'type_no': '', 'kind': '', 'total': 0}
-        data_ok = self.check_data(product_dict, json_obj)
+        product_dict = {'id': 0, 'brand': '', 'type_no': '', 'kind': '', 'total':0,'store':'',}
+        data_ok = check_data(product_dict, json_obj)
         if not data_ok[0]:
             return JsonResponse(data_ok[1])
+        product_dict = data_ok[1]
         with transaction.atomic():
             try:
-                product = ProductProfile.object.filter(id=product_dict['id'])
-                if not product:
+                products = ProductProfile.objects.using(database).filter(id=product_dict['id'])
+                if not products:
                     result = {'code': 200, 'data': {'error': '請給予商品'}}
                     return JsonResponse(result)
-                product[0].update(**product_dict)
-                product[0].save()
-                result = {'code': 200, 'data': f'{product_dict["type_no"]}新增完成'}
+                product = products[0]
+                product.brand = product_dict['brand']
+                product.type_no = product_dict['type_no']
+                product.kind = product_dict['kind']
+                product.total = product_dict['total']
+                product.store = product_dict['store']
+                product.save(using=database)
+                result = {'code': 200, 'data': {'message': f'{product_dict["type_no"]}修改完成'}}
             except Exception as e:
                 result = {'code': 500, 'data': {'error': '新增資料出現異常'}}
         return JsonResponse(result)
@@ -132,56 +203,108 @@ class ProductManagerView(GenericAPIView):
     serializer_class = PmanagerSerializer
 
 
-    def total_change(self,object):
-        pid = object.pid
-        pid.update(total=pid.total - 1)
-        pid.save()
+    def store_change(self,objects,database):
+        pid = objects.pid
+        pid.store -= 1
+        pid.save(using=database)
 
-    # 商品銷貨: 修改商品數量 0 > 1
-    def put(self, request):
+    # 商品銷貨: 新增銷貨時間 跟 銷貨金額 修改商品數量 0 > 1
+    def post(self, request,account):
+        database = DB_DICT.get(account,'')
+        if not database:
+            result = {'code': 400, 'data': {'error': '選擇錯誤資料庫'}}
+            return JsonResponse(result)
+
         json_obj = take_data(request)
         if not json_obj:
             result = {'code': 400, 'data': {'error': '請傳送資料'}}
             return JsonResponse(result)
-        mid = json_obj.get('mid', '')
-        managers = ProductManager.object.filter(id=mid)
+        product_dict = {'mid': '', 'out_time': '', 'out_price': ''}
+        # 檢查傳入資料是否有問題
+        data_ok = check_data(product_dict, json_obj)
+        if not data_ok[0]:
+            return JsonResponse(data_ok[1])
+        product_dict = data_ok[1]
+        managers = ProductManager.objects.using(database).filter(id=product_dict['mid'])
         if not managers:
             result = {'code': 400, 'data': {'error': '請傳入正確的mid'}}
             return JsonResponse(result)
         manager = managers[0]
         with transaction.atomic():
             try:
-                self.total_change(manager)
-                manager.update(number=0)
-                manager.save()
-                result = {'code': 200, 'data': f'{managers[0].pid.type_no}銷貨完成'}
+                self.store_change(manager,database)
+                manager.number = 0
+                manager.out_price = product_dict['out_price']
+                manager.out_time = product_dict['out_time']
+                manager.save(using=database)
+                result = {'code': 200, 'data':{'message': f'{managers[0].pid.type_no}銷貨完成'}}
             except Exception as e:
                 result = {'code': 500, 'data': {'error': '商品銷貨 出現異常'}}
         return JsonResponse(result)
 
-    # 商品刪除: 刪除商品個別紀錄(包含 個別資料刪除/總表資料數量-1)
-    def delete(self, request):
-        # 先用初版寫法 其他日後再做修改
+    # 修改商品資料: 可修改 品牌/類型/類別/進貨價格/進貨時間/銷貨價格/銷貨時間
+    def put(self, request, mid, account):
+        database = DB_DICT.get(account,'')
+        if not database:
+            result = {'code': 400, 'data': {'error': '選擇錯誤資料庫'}}
+            return JsonResponse(result)
+
         json_obj = take_data(request)
         if not json_obj:
             result = {'code': 400, 'data': {'error': '請傳送資料'}}
             return JsonResponse(result)
-
-        mid = json_obj.get('mid', '')
-        if not mid:
-            result = {'code': 400, 'data': {'error': '商品id 傳送錯誤'}}
-            return JsonResponse(result)
-
-        manager = ProductManager.object.filter(id=mid)
-        if not manager:
-            result = {'code': 400, 'data': {'error': f'商品id 傳送錯誤'}}
-            return JsonResponse(result)
-
+        product_dict = {'mid': 0, 'brand': '', 'type_no': '', 'kind': '', 'in_price':0,'in_time':'',}
+        data_ok = check_data(product_dict, json_obj)
+        if not data_ok[0]:
+            return JsonResponse(data_ok[1])
+        product_dict = data_ok[1]
+        product_dict['out_price'] =json_obj.get('out_price')
+        product_dict['out_time'] =json_obj.get('out_time')
         with transaction.atomic():
             try:
-                self.total_change(manager)
-                manager[0].delete()
-                result = {'code': 200, 'data': {'message': f'{mid}號紀錄，刪除完成'}}
+                manages = ProductManager.objects.using(database).filter(id=mid)
+                if not manages:
+                    result = {'code': 200, 'data': {'error': '請給予商品'}}
+                    return JsonResponse(result)
+                manage = manages[0]
+                manage.in_price = product_dict['in_price']
+                manage.in_time = product_dict['in_time']
+                manage.out_price = product_dict['out_price']
+                if product_dict['out_time']:
+                    manage.out_time = product_dict['out_time']
+
+                product = manage.pid
+                product.brand = product_dict['brand']
+                product.kind = product_dict['kind']
+                product.type_no = product_dict['type_no']
+                manage.save(using=database)
+                product.save(using=database)
+                result = {'code': 200, 'data': {'message': f'{product_dict["type_no"]}修改完成'}}
+            except Exception as e:
+                result = {'code': 500, 'data': {'error': f'新增資料出現異常: {e}'}}
+        return JsonResponse(result)
+
+
+    # 商品刪除: 刪除商品個別紀錄(包含 個別資料刪除/總表資料數量-1)
+    def delete(self, request, mid,account):
+        # 先用初版寫法 其他日後再做修改
+        database = DB_DICT.get(account,'')
+        if not database:
+            result = {'code': 400, 'data': {'error': '選擇錯誤資料庫'}}
+            return JsonResponse(result)
+        ProductManager.objects.using(database)
+
+        manager = ProductManager.objects.using(database).filter(id=mid)
+        if not manager:
+            result = {'code': 400, 'data': {'error': f'商品{id} 傳送錯誤'}}
+            return JsonResponse(result)
+        manager = manager[0]
+        with transaction.atomic():
+            try:
+                self.store_change(manager,database)
+                type_no = manager.pid.type_no
+                manager.delete(using=database)
+                result = {'code': 200, 'data': {'message': f'{type_no} 刪除完成'}}
             except Exception as e:
                 result = {'code': 500, 'data': {'error': '刪除資料出現異常'}}
         return JsonResponse(result)
@@ -199,14 +322,14 @@ class ProductReceiptView(GenericAPIView):
             result = {'code': 400, 'data': {'error': '請傳送資料'}}
             return JsonResponse(result)
 
-        receipt = ProductReceipt.object.filter(mid_id=json_obj['mid'])
+        receipt = ProductReceipt.objects.filter(mid_id=json_obj['mid'])
         if not receipt:
             result = {'code': 400, 'data': {'error': '此發票紀錄不存在'}}
             return JsonResponse(result)
         with transaction.atomic():
             try:
                 receipt[0].status = 1
-                receipt[0].save()
+                receipt[0].save(using=database)
                 result = {'code': 200, 'data': {'message': '發票開立紀錄完成'}}
 
             except Exception as e:
@@ -219,7 +342,7 @@ class ProductReceiptView(GenericAPIView):
         if not json_obj:
             result = {'code': 400, 'data': {'error': '請傳送資料'}}
             return JsonResponse(result)
-        receipt = ProductReceipt.object.filter(mid_id=json_obj['mid'])
+        receipt = ProductReceipt.objects.filter(mid_id=json_obj['mid'])
         if not receipt:
             result = {'code': 400, 'data': {'error': '發票資料錯誤'}}
             return JsonResponse(result)
@@ -227,7 +350,7 @@ class ProductReceiptView(GenericAPIView):
         with transaction.atomic():
             try:
                 receipt[0].delete()
-                ProductReceipt.object.create(mid=manager)
+                ProductReceipt.objects.create(mid=manager)
                 result = {'code': 200, 'data': {'message': '發票紀錄重置完成'}}
             except Exception as e:
                 result = {'code': 500, 'data': {'error': '發票狀態修改出現異常'}}
