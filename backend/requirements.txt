@@ -1,0 +1,6 @@
+Django==4.0.2
+django-cors-headers==3.13.0
+djangorestframework==3.13.1
+drf-yasg==1.21.3
+PyJWT == 2.5.0
+pandas == 1.5.2
