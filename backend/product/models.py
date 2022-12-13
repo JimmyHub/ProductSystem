@@ -3,7 +3,6 @@ import django
 
 class ProductProfile(models.Model):
     id = models.AutoField(primary_key=True)
-    brand = models.CharField(verbose_name='品牌', max_length=10)
     kind = models.CharField(verbose_name='類別', max_length=20)
     type_no = models.CharField(verbose_name='型號', max_length=50)
     total = models.IntegerField(verbose_name='商品總數', default=0)

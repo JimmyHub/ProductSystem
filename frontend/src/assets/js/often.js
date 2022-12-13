@@ -23,6 +23,7 @@ export function del_Session(item){
 }
 
 //搜尋
+//頁面不在就轉跳 如果頁面再就直接改內容 //搬回去放
 export function search(){
     let keyword = this.keyword.replace(/\s*/g,"").replace(/\//g,'')
     let mode = this.selected

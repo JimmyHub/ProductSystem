@@ -11,8 +11,8 @@ from .serializers import ProductSerializer, PmanagerSerializer, PreceiptSerializ
 key = 'a123456'
 
 DB_DICT = {
-    'in_database': 'default',
-    'out_database': 'out'
+    'out_database': 'default',
+    'in_database': 'in_account',
 }
 
 
@@ -65,18 +65,14 @@ class ProductView(GenericAPIView):
         elif pattern == 'all_money':
             in_total = ProductManager.objects.using(database).all().aggregate(Sum('in_price'))
             out_total = ProductManager.objects.using(database).all().aggregate(Sum('out_price'))
+            in_total['in_price__sum'] = in_total['in_price__sum'] if in_total['in_price__sum'] else 0
             out_total['out_price__sum'] = out_total['out_price__sum'] if out_total['out_price__sum'] else 0
             result = {'code': 200,
                       'data': {'in_total': in_total['in_price__sum'], 'out_total': out_total['out_price__sum']}}
             return JsonResponse(result)
         elif pattern == 'search':
             # page 資料數量 要小心出錯
-            if mode == 'brand':
-                product_list = ProductProfile.objects.using(database).filter(brand__contains=keyword)
-            # elif mode == 'kind':
-            #     product_list = ProductProfile.objects.filter(kind__contains=keyword)
-            elif mode == 'type_no':
-                print(keyword)
+            if mode == 'type_no':
                 product_list = ProductProfile.objects.using(database).filter(type_no__contains=keyword)
             else:
                 product_list = ProductProfile.objects.using(database).filter(kind__contains=keyword)
@@ -94,7 +90,6 @@ class ProductView(GenericAPIView):
             for product in page_p_list:
                 product_data = {
                     'pid': product.id,
-                    'brand': product.brand,
                     'type_no': product.type_no,
                     'kind': product.kind,
                     'total': product.total,
@@ -104,7 +99,8 @@ class ProductView(GenericAPIView):
         elif browser == 'history':
             manager_list = ProductManager.objects.using(database).all().order_by('-in_time')
             if not manager_list:
-                result = {'code': 400, 'data': {'error': 'manager 資料庫有誤'}}
+                # 要區分一下 沒有任何資料的時候
+                result = {'code': 200, 'data': {'error': 'manager 資料庫有誤'}}
                 return JsonResponse(result)
             for p in product_list:
                 list_tmp = manager_list.filter(pid=p.id)
@@ -112,7 +108,6 @@ class ProductView(GenericAPIView):
                     out_price = 0 if not manager.out_price else manager.out_price
                     out_time = '' if not manager.out_time else manager.out_time
                     manager_data = {
-                        'brand': manager.pid.brand,
                         'type_no': manager.pid.type_no,
                         'kind': manager.pid.kind,
                         'store': manager.pid.store,
@@ -140,7 +135,7 @@ class ProductView(GenericAPIView):
         if not json_obj:
             result = {'code': 400, 'data': {'error': '請傳送資料'}}
             return JsonResponse(result)
-        product_dict = {'brand': '', 'type_no': '', 'kind': '', 'total': 0, 'in_price': 0, 'in_time': ''}
+        product_dict = {'type_no': '', 'kind': '', 'total': 0, 'in_price': 0, 'in_time': ''}
         # 檢查傳入資料是否有問題
         data_ok = check_data(product_dict, json_obj)
         if not data_ok[0]:
@@ -155,7 +150,7 @@ class ProductView(GenericAPIView):
                 if not product:
                     # 根據傳入資料 先把 機型 寫入資料庫
                     product_dict['store'] = product_dict['total']
-                    product = ProductProfile.objects.using(database).create(brand=product_dict['brand'],
+                    product = ProductProfile.objects.using(database).create(
                                                                             type_no=product_dict['type_no'],
                                                                             kind=product_dict['kind'],
                                                                             total=product_dict['total'],
@@ -187,7 +182,7 @@ class ProductView(GenericAPIView):
         if not json_obj:
             result = {'code': 400, 'data': {'error': '請傳送資料'}}
             return JsonResponse(result)
-        product_dict = {'id': 0, 'brand': '', 'type_no': '', 'kind': '', 'total': 0, 'store': '', }
+        product_dict = {'id': 0, 'type_no': '', 'kind': '', 'total': 0, 'store': '', }
         data_ok = check_data(product_dict, json_obj)
         if not data_ok[0]:
             return JsonResponse(data_ok[1])
@@ -199,7 +194,6 @@ class ProductView(GenericAPIView):
                     result = {'code': 200, 'data': {'error': '請給予商品'}}
                     return JsonResponse(result)
                 product = products[0]
-                product.brand = product_dict['brand']
                 product.type_no = product_dict['type_no']
                 product.kind = product_dict['kind']
                 product.total = product_dict['total']
@@ -267,7 +261,7 @@ class ProductManagerView(GenericAPIView):
         if not json_obj:
             result = {'code': 400, 'data': {'error': '請傳送資料'}}
             return JsonResponse(result)
-        product_dict = {'mid': 0, 'brand': '', 'type_no': '', 'kind': '', 'in_price': 0, 'in_time': '', }
+        product_dict = {'mid': 0, 'type_no': '', 'kind': '', 'in_price': 0, 'in_time': '', }
         data_ok = check_data(product_dict, json_obj)
         if not data_ok[0]:
             return JsonResponse(data_ok[1])
@@ -288,7 +282,6 @@ class ProductManagerView(GenericAPIView):
                     manage.out_time = product_dict['out_time']
 
                 product = manage.pid
-                product.brand = product_dict['brand']
                 product.kind = product_dict['kind']
                 product.type_no = product_dict['type_no']
                 manage.save(using=database)

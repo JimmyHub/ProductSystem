@@ -78,21 +78,13 @@ WSGI_APPLICATION = 'Store.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'psystem_in',
-        'USER': 'root',
-        'PASSWORD': 'jimmy41708',
-        'HOST': '127.0.0.1',
-        'PORT': 3306,
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'psystem_out.sqlite3'),
     },
-    'out': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'psystem_out',
-        'USER': 'root',
-        'PASSWORD': 'jimmy41708',
-        'HOST': '127.0.0.1',
-        'PORT': 3306,
-    }
+    'in_account': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'psystem_in.sqlite3'),
+    },
 
 }
 
@@ -168,62 +160,3 @@ MEDIA_URL = '/media/'
 
 # 媒體資源存放的 服務器目錄
 MEDIA_ROOT = Path('/').joinpath(BASE_DIR, 'media/')
-
-# # https://github.com/pennersr/django-allauth
-# ACCOUNT_EMAIL_VERIFICATION = 'none'
-# # set UI url to redirect after a successful e-mail confirmation
-# # changed from '/auth/login' to '/auth/email-confirmation' for email confirmation message
-# DATA_ROOT = os.path.join(BASE_DIR, 'data')
-# LOGSTASH_DB = os.path.join(DATA_ROOT, 'logstash.db')
-# os.makedirs(DATA_ROOT, exist_ok=True)
-# if not os.path.exists(LOGSTASH_DB):
-#     open(LOGSTASH_DB, 'w').close()
-# LOGGING = {
-#     'version': 1,
-#     'disable_existing_loggers': False,
-#     'formatters': {
-#         'logstash': {
-#             '()': 'logstash_async.formatter.DjangoLogstashFormatter',
-#             'message_type': 'python-logstash',
-#             'fqdn': False,  # Fully qualified domain name. Default value: false.
-#         },
-#         'standard': {
-#             'format': '[%(asctime)s] %(levelname)s %(name)s: %(message)s'
-#         }
-#     },
-#     'handlers': {
-#         'console': {
-#             'class': 'logging.StreamHandler',
-#             'filters': [],
-#             'formatter': 'standard',
-#         },
-#         'server_file': {
-#             'class': 'logging.handlers.RotatingFileHandler',
-#             'level': 'DEBUG',
-#             'filename': os.path.join(BASE_DIR, 'logs', 'cvat_server.log'),
-#             'formatter': 'standard',
-#             'maxBytes': 1024 * 1024 * 50,  # 50 MB
-#             'backupCount': 5,
-#         },
-#         'logstash': {
-#             'level': 'INFO',
-#             'class': 'logstash_async.handler.AsynchronousLogstashHandler',
-#             'formatter': 'logstash',
-#             'transport': 'logstash_async.transport.HttpTransport',
-#             'ssl_enable': False,
-#             'ssl_verify': False,
-#             'host': os.getenv('DJANGO_LOG_SERVER_HOST', 'localhost'),
-#             'port': os.getenv('DJANGO_LOG_SERVER_PORT', 8080),
-#             'version': 1,
-#             'message_type': 'django',
-#             'database_path': LOGSTASH_DB,
-#         }
-#     },
-#     'loggers': {
-#         'django': {
-#             'handlers': ['console', 'server_file'],
-#             'level': 'INFO',
-#             'propagate': True
-#         }
-#     },
-# }
