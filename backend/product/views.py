@@ -98,28 +98,24 @@ class ProductView(GenericAPIView):
                 result_list.append(product_data)
         elif browser == 'history':
             manager_list = ProductManager.objects.using(database).all().order_by('-in_time')
-            if not manager_list:
-                # 要區分一下 沒有任何資料的時候
-                result = {'code': 200, 'data': {'error': 'manager 資料庫有誤'}}
-                return JsonResponse(result)
-            for p in product_list:
-                list_tmp = manager_list.filter(pid=p.id)
-                for manager in list_tmp:
-                    out_price = 0 if not manager.out_price else manager.out_price
-                    out_time = '' if not manager.out_time else manager.out_time
-                    manager_data = {
-                        'type_no': manager.pid.type_no,
-                        'kind': manager.pid.kind,
-                        'store': manager.pid.store,
-                        'mid': manager.id,
-                        'number': manager.number,
-                        'in_price': manager.in_price,
-                        'in_time': manager.in_time,
-                        'out_price': out_price,
-                        'out_time': out_time}
-                    result_list.append(manager_data)
-            pcounts, result_list = self.select_page_data(page, result_list)
-
+            if manager_list:
+                for p in product_list:
+                    list_tmp = manager_list.filter(pid=p.id)
+                    for manager in list_tmp:
+                        out_price = 0 if not manager.out_price else manager.out_price
+                        out_time = '' if not manager.out_time else manager.out_time
+                        manager_data = {
+                            'type_no': manager.pid.type_no,
+                            'kind': manager.pid.kind,
+                            'store': manager.pid.store,
+                            'mid': manager.id,
+                            'number': manager.number,
+                            'in_price': manager.in_price,
+                            'in_time': manager.in_time,
+                            'out_price': out_price,
+                            'out_time': out_time}
+                        result_list.append(manager_data)
+                pcounts, result_list = self.select_page_data(page, result_list)
         result = {'code': 200, 'data': {'list': result_list, 'pcounts': pcounts}}
         return JsonResponse(result)
 
@@ -160,18 +156,17 @@ class ProductView(GenericAPIView):
                     product = product[0]
                     total_num = product.total + int(product_dict['total'])
                     store_num = product.store + int(product_dict['total'])
-                    # 商品資料輸入正確 但是在建立個別帳單時出錯 就會造成庫存有問題
                     product.total = total_num
                     product.store = store_num
                     product.save(using=database)
                 for num in range(int(product_dict['total'])):
-                    manager = ProductManager.objects.using(database).create(pid=product,
+                    ProductManager.objects.using(database).create(pid=product,
                                                                             in_price=product_dict['in_price'],
                                                                             in_time=product_dict['in_time'],
                                                                             number=1)
                 result = {'code': 200, 'data': {'message': f'{product_dict["type_no"]}新增完成'}}
             except Exception as e:
-                result = {'code': 500, 'data': {'error': '新增資料出現異常'}}
+                result = {'code': 500, 'data': {'error': f'新增資料出現異常:{e}'}}
         return JsonResponse(result)
 
     # 修改商品資料: 修改 品牌/類型/類別/庫存/總數
@@ -298,7 +293,6 @@ class ProductManagerView(GenericAPIView):
         if not database:
             result = {'code': 400, 'data': {'error': '選擇錯誤資料庫'}}
             return JsonResponse(result)
-        ProductManager.objects.using(database)
 
         manager = ProductManager.objects.using(database).filter(id=mid)
         if not manager:
