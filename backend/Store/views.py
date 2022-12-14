@@ -5,7 +5,6 @@ import jwt
 from user.models import UserProfile
 from user.serializers import UserSerializer
 from tools.tokens import auth_swagger_wrapper
-import json
 key='a123456'
 
 

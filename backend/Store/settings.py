@@ -78,21 +78,13 @@ WSGI_APPLICATION = 'Store.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'psystem_in',
-        'USER': 'root',
-        'PASSWORD': 'jimmy41708',
-        'HOST': '127.0.0.1',
-        'PORT': 3306,
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'psystem_out.sqlite3'),
     },
-    'out': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'psystem_out',
-        'USER': 'root',
-        'PASSWORD': 'jimmy41708',
-        'HOST': '127.0.0.1',
-        'PORT': 3306,
-    }
+    'in_account': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'psystem_in.sqlite3'),
+    },
 
 }
 
@@ -129,9 +121,12 @@ USE_TZ = False
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
-STATIC_URL = '/static/'
-
-CORS_ORIGIN_ALLOW_ALL = False
+STATIC_URL = 'static/'
+STATICFILES_DIRS = (
+    #C:\Users\88697\Desktop\共用python\專案\PJ_Shoppingcart\Store\static
+    os.path.join(BASE_DIR,'static'),
+)
+CORS_ORIGIN_ALLOW_ALL = True
 # CORS_ORIGIN_ALLOW_ALL=True
 
 # 表示在跨域請求中 允許對瀏覽器cookie進行操作

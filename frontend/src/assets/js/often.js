@@ -1,83 +1,54 @@
-import { url } from '@/assets/js/set.js'
+// import { url } from '@/assets/js/set.js'
 
 //localstorage 設置
 export function set_Storage(item,value){
     window.localStorage.setItem(item,value)
 }
-
 export function get_Storage(item){
     return window.localStorage.getItem(item)
 }
-
 export function del_Storage(item){
     window.localStorage.removeItem(item)
 }
 
 //sessionstorage設置
-export function set_session(item,value){
+export function set_Session(item,value){
     window.sessionStorage.setItem(item,value)
 }
-export function get_session(item){
+export function get_Session(item){
     return window.sessionStorage.getItem(item)
 }
-export function del_session(item){
+export function del_Session(item){
     window.sessionStorage.removeItem(item)
 }
 
 //搜尋
+//頁面不在就轉跳 如果頁面再就直接改內容 //搬回去放
 export function search(){
-    let keyword = this.keyword.replace(/\s*/g,"")
-    set_Storage('keyword',keyword)
-    set_Storage('pattern','search')
-    if(window.location.href ==`${url()}/#/product_all`){
-        location.reload()
+    let keyword = this.keyword.replace(/\s*/g,"").replace(/\//g,'')
+    let mode = this.selected
+    if(mode){
+        if(keyword){
+            set_Session('keyword',keyword)
+            set_Session('mode',mode)
+            set_Session('pattern','search')
+            location.reload()
+        }else{
+            alert('請輸入關鍵字')
+        }
     }else{
-        window.location.href='#/product_all'
+        alert('請選擇模式')
     }
-}
-//登出
-export function logout(){
-    del_session('token')
-    del_session('username')
-    if(window.location.href ==`${url()}/#/index`){
-        location.reload()
-    }else{
-        window.location.href='#/index'
-    }
+
+
 }
 
 //返回首頁
 export function go_home(){
-    window.location.href='#/index'
-}
-//返回上一頁
-export function go_back(){
-     window.history.go(-1)
+    window.sessionStorage.clear()
+    location.reload()
 }
 
-//前往瀏覽商品
-export function go_products_all(kind){
-    set_Storage('keyword',kind)
-    if(kind == '0'){
-        set_Storage('pattern','all')
-    }else{
-        set_Storage('pattern','search')
-    }
-    if(window.location.href ==`${url()}/#/product_all`){
-        location.reload()
-    }else{
-        window.location.href='#/product_all'
-    }
-}
-
-//前往購物車
-export function go_cart(){
-    window.location.href='#/shoppings'
-}
-//前往商品上架頁面
-export function go_floor(){
-    window.location.href='#/product_up'
-}
 
 //前往商品詳細內容
 export function product_detail(pid){
@@ -107,16 +78,4 @@ export function product_detail(pid){
             }
         }*/
     }
-}
-
-//賣場 前往訂單詳細內容
-export function orders_detail_1(num){
-    console.log(num)
-    set_Storage('list_id',num)
-    set_Storage('mode',1)
-}
-//客戶 前往訂單詳細內容
-export function orders_detail_0(num){
-    set_Storage('list_id',num)
-    set_Storage('mode',0)
 }
