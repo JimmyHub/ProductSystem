@@ -4,3 +4,4 @@ djangorestframework==3.13.1
 drf-yasg==1.21.3
 PyJWT == 2.5.0
 pandas == 1.5.2
+openpyxl == 3.0.10

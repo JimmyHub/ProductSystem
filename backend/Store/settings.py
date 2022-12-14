@@ -122,10 +122,10 @@ USE_TZ = False
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 STATIC_URL = 'static/'
-STATICFILES_DIRS = (
-    #C:\Users\88697\Desktop\共用python\專案\PJ_Shoppingcart\Store\static
-    os.path.join(BASE_DIR,'static'),
-)
+# STATICFILES_DIRS = (
+#     #C:\Users\88697\Desktop\共用python\專案\PJ_Shoppingcart\Store\static
+#     os.path.join(BASE_DIR,'static'),
+# )
 CORS_ORIGIN_ALLOW_ALL = True
 # CORS_ORIGIN_ALLOW_ALL=True
 

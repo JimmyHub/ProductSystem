@@ -1,0 +1,86 @@
+/*新增按鈕-詳細表才有 */
+.new{
+    position:relative;
+    top: 175px;
+    left: 1075px;
+    overflow: auto;
+    border-radius:3px;
+    text-align: center;
+    padding: 0;
+}
+
+
+/*訂單總覽*/
+#product_scan{
+    position:absolute;
+    top: 232px;
+    left: 80px;
+    width: 1800px;
+    overflow: auto;
+    border-radius:3px;
+    text-align: center;
+    padding: 0;
+}
+
+
+/*訂單標題*/
+.title>p{
+    font-weight: 600;
+    margin: 0;
+}
+
+/*訂單總覽內容*/
+.title {
+    border: 2px solid gray;
+}
+.list {
+    border-left: 2px solid gray;
+    border-bottom: 2px solid gray;
+    border-right: 2px solid gray;
+
+}
+.list:last-child{
+    border-bottom: 2px solid gray;
+}
+.title>p,.list>p{
+    display: inline-block;
+    margin: 0;
+    padding: 0;
+}
+
+.list>p>button{
+    margin-left:15px ;
+}
+
+
+/*新增商品欄位*/
+.action_input{
+    border-left: 2px solid gray;
+    border-bottom: 2px solid gray;
+    border-right: 2px solid gray;
+    padding: 4px 0;
+}
+
+.action_input>p{
+    display: inline-block;
+    margin: 0;
+}
+
+
+/*底部頁碼位置*/
+#page{
+    position:absolute;
+    bottom: 5px;
+    left: 74px;
+    text-align: center;
+    padding: 0;
+
+}
+#page>ul{
+    display:inline-block;
+    list-style:none;
+    padding: 0;
+    margin: 0 5px;
+
+
+}

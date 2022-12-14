@@ -20,7 +20,7 @@ class ProductManager(models.Model):
     in_price = models.IntegerField(verbose_name='進貨金額', default=0)
     in_time = models.DateField(verbose_name='進貨時間')
     out_price = models.IntegerField(verbose_name='銷貨金額', null=True)
-    out_time = models.DateField(verbose_name='銷貨時間',null=True)
+    out_time = models.DateField(verbose_name='銷貨時間', null=True)
 
 
     class Meta:

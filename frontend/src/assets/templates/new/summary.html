@@ -1,0 +1,135 @@
+<div>
+    <div id="top">
+        <h1 @click='go_home()'><b>進出貨系統</b></h1>
+        <img src="@/assets/images/common/cat.png" @click='go_home()'>
+        <div class="account btn-group">
+            <b-button :pressed="isInOut" @click='in_show()' variant="outline-primary" style='font-weight:400;'>內帳</b-button>
+            <b-button :pressed="!isInOut" @click='out_show()' variant="outline-secondary" style='font-weight:400;'>外帳</b-button>
+        </div>
+        <ul class="row">
+            <li class='col-3'></li>
+            <li class='col-2'><a href="#/index" @click="changeBrowser('summary')"><b>總量表</b></a></li>
+            <li class='col-2'><a href="#/index" @click="changeBrowser('history')"><b>明細表</b></a></li>
+            <li class='col-3'></li>
+        </ul>
+        <div class="text input-group text" >
+            <input type="text" class="form-control" placeholder="請選擇項目，再輸入關鍵字" v-model='keyword'>
+            <div class="input-group-append">
+               <button class="btn btn-outline-primary" type="button" checked v-on:click='search()'>搜尋</button>
+           </div>
+        </div>
+        <div class="option input-group">
+            <div class="input-group-prepend">
+             <label class="input-group-text" for="inputSelect01">查詢類型</label>
+            </div>
+            <select class="custom-select" id="inputSelect01" v-model='selected'>
+               <option selected><b>選項</b></option>
+               <option value="type_no"><b>型號/品項</b></option>
+               <option value="kind"><b>類型</b></option>
+            </select>
+        </div>
+        <div class='buyin'><p>總進帳金額: {{ in_total }}</p><p>總銷帳金額: {{ out_total }}</p></div>
+    </div>
+    <div id="middle">
+        <b-container v-if ='isAll' id='product_scan'>
+            <div>
+                <div class="title">
+                    <p class="col-3">型號/品項</p>
+                    <p class="col-2">類型</p>
+                    <p class="col-2">總數</p>
+                    <p class="col-1">庫存</p>
+                    <p class="col-2"></p>
+                </div>
+                <div v-for= 'p in pdatas'>
+                    <div class="list" >
+                        <p class="col-3">{{ p.type_no }}</p>
+                        <p class="col-2">{{ p.kind }}</p>
+                        <p class="col-2">{{ p.total }}</p>
+                        <p class="col-1">{{ p.store }}</p>
+                        <p class="col-2"></p>
+                    </div>
+                </div>
+            </div> 
+        </b-container>
+        <b-button v-if="!isAll" class="new" variant="outline-primary" type="button" size='lg' v-on:click='act_action("AddNew",-1)'>新增</b-button>
+        <b-button v-if="!isAll" class="new" variant="outline-danger" type="button" size='lg' v-on:click='act_action("Delete",-1)' >刪除</b-button>
+        <b-container v-if ='!isAll' id='product_scan'>
+            <div>
+                <div class="title" >
+                    <p class="col-2">型號/品項</p>
+                    <p class="col-1">類型</p>
+                    <p class="col-1">數量</p>
+                    <p class='col-1'>進貨單價</p>
+                    <p class="col-2">進貨時間</p>
+                    <p class='col-1'>銷貨單價</p>
+                    <p class="col-2">銷貨時間</p>
+                    <p class="col-2" v-if= 'isAction !== "Delete"'>執行動作</p>
+                    <p class="col-2" v-if= 'isAction === "Delete"'>
+                        <span style='margin-left:5px;'>點選項目</span>
+                        <b-button variant="outline-danger" type="button" size='sm' v-on:click='delete_item()'>確定刪除</b-button>
+                    </p>
+
+                </div>
+                <div class="action_input" v-if='isAction === "AddNew"'>
+                    <input class="col-2" type="text" v-model='type_no' placeholder="型號/品項">
+                    <input class="col-1" type="text" v-model='kind'  placeholder="類型">
+                    <input class="col-1" type="number" v-model='total' placeholder="總數">
+                    <input class="col-1" type="number" v-model='in_price' placeholder="進貨單價">
+                    <input class="col-2" type="date" v-model='in_time' placeholder="進貨時間" name="bday">
+                    <p class="col-1" >-----</p>
+                    <p class="col-2" >-----</p>
+                    <p class="col-2" >
+                        <b-button variant="outline-primary" type="button" size='sm' @click='submit_new()'>商品資料送出</b-button>
+                    </p>
+                </div>
+                <b-form-checkbox-group id="checkbox-group-2" v-model="d_list" name="flavour-2">
+                <div v-for="(p,index) in pdatas">
+                    <div class="list" >
+                        <p class="col-2">{{ p.type_no }}</p>
+                        <p class="col-1">{{ p.kind }}</p>
+                        <p class="col-1">{{ p.number }}({{p.store}})</p>
+                        <p class="col-1">{{ p.in_price }}</p>
+                        <p class="col-2">{{ p.in_time }}</p>
+                        <p class="col-1">{{ p.out_price }}</p>
+                        <p class="col-2">{{ p.out_time }}</p>
+                        <p class="col-2" id='action'>
+                            <b-form-checkbox v-if='isAction == "Delete"' :value='index' style='margin:0'>{{ index+1 }} 號</b-form-checkbox>
+                            <b-button variant="outline-info" type="button" size='sm' v-on:click='act_action("AddSale",index)'>銷貨</b-button>
+                            <b-button variant="outline-secondary" type="button" size='sm' v-on:click='act_action("Change",index)'>修改</b-button>
+                        </p>
+                    </div>
+                    <div class="action_input" v-if='isAction === "AddSale" && isID === index' >
+                        <p class="col-2">-----</p>
+                        <p class="col-1">-----</p>
+                        <p class="col-1">-----</p>
+                        <p class="col-1">-----</p>
+                        <p class="col-2">-----</p>
+                        <input class="col-1" type="number" v-model='out_price' placeholder="銷貨單價">
+                        <input class="col-2" type="date" v-model='out_time' placeholder="銷貨時間" name="bday" >
+                        <p class="col-2" >
+                            <b-button variant="outline-primary" type="button" size='sm' v-on:click='submit_sale(p.mid)'>銷貨資料送出</b-button>
+                        </p>
+                    </div>
+                    <div class="action_input" v-if='isAction === "Change" && isID === index' >
+                        <input class="col-2" type="text" v-model='type_no' placeholder="型號/品項">
+                        <input class="col-1" type="text" v-model='kind'  placeholder="類型">
+                        <p class="col-1">-----</p>
+                        <input class="col-1" type="number" v-model='in_price' placeholder="進貨單價">
+                        <input class="col-2" type="date" v-model='in_time' placeholder="進貨時間" name="bday">
+                        <input class="col-1" type="number" v-model='out_price' placeholder="銷貨單價">
+                        <input class="col-2" type="date" v-model='out_time' placeholder="銷貨時間" name="bday">
+                        <p class="col-2" >
+                            <b-button variant="outline-primary" type="button" size='sm' v-on:click='submit_change(index)'>更改資料送出</b-button>
+                        </p>
+                    </div>
+                </div>
+                </b-form-checkbox-group>
+            </div> 
+        </b-container>
+        <div id='page'>
+            <ul v-for='c in pcounts'>
+                <li @click='changePage(c)'><a href="#/index" >{{c}}</a></li>
+            </ul>
+        </div>
+    </div>
+</div>
