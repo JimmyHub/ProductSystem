@@ -16,11 +16,11 @@ class ProductSerializer(serializers.HyperlinkedModelSerializer):
         # fields = ('pname', 'pkind', 'pprice')
 
 
-
 class PmanagerSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = ProductManager
         fields = "__all__"
+
 
 class PreceiptSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:

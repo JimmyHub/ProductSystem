@@ -69,9 +69,9 @@
 
 /*底部頁碼位置*/
 #page{
-    position:absolute;
-    bottom: 5px;
-    left: 74px;
+    position:relative;
+    top: 3550px;
+    left: 0px;
     text-align: center;
     padding: 0;
 

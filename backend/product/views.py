@@ -39,17 +39,18 @@ class ProductView(GenericAPIView):
 
     # 獲取 特定page 的資料
     def select_page_data(self, page, query_list):
-        p_max = page * 10
-        p_min = (page - 1) * 10
+        p_max = page * 300
+        p_min = (page - 1) * 300
         data_len = len(query_list)
-        if data_len < 10:
+        if data_len < 300:
             min_data_num, max_data_num = 0, data_len
-        elif (page + 1) * 10 > data_len:
-            if data_len > p_max:
-                min_data_num, max_data_num = p_min, p_max
-            else:
+
+        elif p_max > data_len:
+            if data_len > p_min:
                 min_data_num, max_data_num = p_min, data_len
-        pcount = data_len // 10 + 1
+        else:
+            min_data_num, max_data_num = p_min, p_max
+        pcount = data_len // 300 + 1
         pcounts = [i for i in range(1, pcount + 1)]
         query_list = query_list[min_data_num: max_data_num]
         return pcounts, query_list

@@ -105,8 +105,6 @@
                     'in_price':this.in_price,
                     'in_time':this.in_time,
                 }
-                console.log(this.in_time)
-                console.log(typeof(this.in_time))
 
                 if(isOK){
                         padd(JSON.stringify(data),account).then((response)=>{
@@ -223,7 +221,7 @@
           let keyword = get_Session('keyword')
           let account = get_Session('account')
           if(account ==null){
-            account = 'in_database'
+            account = 'out_database'
             set_Session('account',account)
           }
           await Promise.all([pbrowser(pattern,browser,page,mode,keyword,account),pbrowser('all_money',browser,1,'null','null',account)]).then(([productResponse,productmoneyResponse]) =>{
@@ -254,7 +252,7 @@
                     }else if(account == 'out_database'){
                         vm.isInOut = false
                     }else{
-                        vm.isInOut = true
+                        vm.isInOut = false
                     }
                 }   
             )

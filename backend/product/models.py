@@ -1,5 +1,4 @@
 from django.db import models
-import django
 
 class ProductProfile(models.Model):
     id = models.AutoField(primary_key=True)
